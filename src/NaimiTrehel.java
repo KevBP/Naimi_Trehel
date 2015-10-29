@@ -6,6 +6,8 @@ import visidia.simulation.process.messages.Message;
 // Java imports
 import java.util.Random;
 
+import Message.*;
+
 public class NaimiTrehel extends Algorithm {
     // All nodes data
     private int procId;
@@ -103,24 +105,64 @@ public class NaimiTrehel extends Algorithm {
     synchronized void askForCritical() {
         waitForCritical = true;
         sc = true;
-        // TODO
+        if (owner != -1) {
+            REQMessage msg = new REQMessage(procId);
+            sendTo(owner, msg);
+            System.out.println(procId + " - Ask for critical to " + owner);
+            owner = -1;
+            while (token != true) {
+                displayState();
+                try {
+                    this.wait();
+                } catch( InterruptedException ie) {}
+            }
+        }
     }
 
     // Rule 2 : Receive REQ from d
-    void receiveREQ(int d) {
-        // TODO
+    // TODO problem with from = procId of emitter
+    void receiveREQ(int d, int from) {
+        if (owner == -1) {
+            if (sc == true) {
+                next = from;
+                System.out.println(procId + " - Receive REQ from " + d + " for " + from + ", added to next");
+            }
+            else {
+                token = false;
+                TOKENMessage msg = new TOKENMessage();
+                sendTo(from, msg);
+                System.out.println(procId + " - Receive REQ from " + d + " for " + from + ", send token");
+            }
+        }
+        else {
+            REQMessage msg = new REQMessage(from);
+            sendTo(owner, msg);
+            System.out.println(procId + " - Receive REQ from " + d + " for " + from + ", send REQ to " + owner);
+        }
+        displayState();
+        owner = from;
     }
 
     // Rule 3 : Receive the TOKEN from d
-    void receiveTOKEN(int d) {
-        // TODO
+    synchronized void receiveTOKEN(int d) {
+        token = true;
+        System.out.println(procId + " - Receive TOKEN from " + d);
+        notify();
     }
 
     // Rule 4
     void endCriticalUse() {
+        System.out.println(procId + " - End critical use");
         inCritical = false;
+        displayState();
         sc = false;
-        // TODO
+        if (next != -1) {
+            TOKENMessage msg = new TOKENMessage();
+            sendTo(next, msg);
+            System.out.println(procId + " - Send TOKEN to " + next);
+            token = false;
+            next = -1;
+        }
     }
 
     // Access to receive function
@@ -133,6 +175,9 @@ public class NaimiTrehel extends Algorithm {
 
         String state = new String("\n");
         state = state + "--------------------------------------\n";
+        if (token == true) {
+            state += "TOKEN\n";
+        }
         if (inCritical)
             state = state + "** ACCESS CRITICAL **";
         else if (waitForCritical)

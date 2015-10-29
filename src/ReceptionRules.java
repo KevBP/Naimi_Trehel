@@ -1,4 +1,4 @@
-import Message.NetMessage;
+import Message.*;
 
 // Visidia imports
 import visidia.simulation.process.messages.Door;
@@ -26,7 +26,7 @@ public class ReceptionRules extends Thread {
             switch (((NetMessage) m).getMsgType()) {
 
                 case REQ:
-                    algo.receiveREQ(door);
+                    algo.receiveREQ(door, ((REQMessage) m).getFrom());
                     break;
 
                 case TOKEN:

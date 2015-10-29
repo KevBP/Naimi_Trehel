@@ -1,11 +1,13 @@
 package Message;
 
-public class NTMessage extends NetMessage {
+public class REQMessage extends NetMessage {
 
     private MsgType type;
+    private int from;
 
-    public NTMessage(MsgType t) {
-        type = t;
+    public REQMessage(int f) {
+        type = MsgType.REQ;
+        from = f;
     }
 
     @Override
@@ -15,7 +17,7 @@ public class NTMessage extends NetMessage {
 
     @Override
     public visidia.simulation.process.messages.Message clone() {
-        return new NTMessage(type);
+        return new REQMessage(from);
     }
 
     @Override
@@ -28,4 +30,7 @@ public class NTMessage extends NetMessage {
         return this.toString();
     }
 
+    public int getFrom() {
+        return from;
+    }
 }
