@@ -1,5 +1,5 @@
 package Message;
 
 public enum MsgType {
-    REQ, TOKEN
+    REQ, TOKEN, INIT
 }

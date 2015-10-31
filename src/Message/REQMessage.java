@@ -6,7 +6,11 @@ public class REQMessage extends NetMessage {
     private int from;
 
     public REQMessage(int f) {
-        type = MsgType.REQ;
+        this(MsgType.REQ, f);
+    }
+
+    public REQMessage(MsgType t, int f) {
+        type = t;
         from = f;
     }
 

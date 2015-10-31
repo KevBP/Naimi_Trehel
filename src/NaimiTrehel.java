@@ -4,6 +4,9 @@ import visidia.simulation.process.messages.Door;
 import visidia.simulation.process.messages.Message;
 
 // Java imports
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import Message.*;
@@ -15,6 +18,7 @@ public class NaimiTrehel extends Algorithm {
     private int next;
     private boolean token;
     private boolean sc;
+    private HashMap<Integer, Integer> doorProcId;
 
     // Higher speed means lower simulation speed
     private int speed = 4;
@@ -45,6 +49,8 @@ public class NaimiTrehel extends Algorithm {
         procId = getId();
         Random rand = new Random(procId);
 
+        doorProcId = new HashMap<>(getNetSize());
+
         owner = 0;
         next = -1;
         token = false;
@@ -56,6 +62,9 @@ public class NaimiTrehel extends Algorithm {
 
         rr = new ReceptionRules(this);
         rr.start();
+
+        REQMessage msg = new REQMessage(MsgType.INIT, procId);
+        sendAll(msg);
 
         // Display initial state + give time to place frames
         df = new DisplayFrame(procId);
@@ -101,43 +110,66 @@ public class NaimiTrehel extends Algorithm {
     // Rules
     //-------------------
 
+    // Rule 0 : init, to know wich door to go to proc
+    void initDoor(int d, int p) {
+        doorProcId.put(d, p);
+    }
+
     // Rule 1 : ask for critical section
     synchronized void askForCritical() {
         waitForCritical = true;
         sc = true;
         if (owner != -1) {
             REQMessage msg = new REQMessage(procId);
-            sendTo(owner, msg);
-            System.out.println(procId + " - Ask for critical to " + owner);
-            owner = -1;
-            while (token != true) {
-                displayState();
-                try {
-                    this.wait();
-                } catch( InterruptedException ie) {}
+            int dest = getKeyByValue(owner);
+            if (dest > -1) {
+                sendTo(dest, msg);
+                System.out.println(procId + " - Ask for critical to " + owner);
+                owner = -1;
+                while (token != true) {
+                    displayState();
+                    try {
+                        this.wait();
+                    } catch (InterruptedException ie) {
+                    }
+                }
+            }
+            else {
+                System.out.println(procId + " - Can't ask for critical to " + owner);
             }
         }
     }
 
     // Rule 2 : Receive REQ from d
-    // TODO problem with from = procId of emitter
     void receiveREQ(int d, int from) {
         if (owner == -1) {
             if (sc == true) {
                 next = from;
-                System.out.println(procId + " - Receive REQ from " + d + " for " + from + ", added to next");
+                System.out.println(procId + " - Receive REQ from " + doorProcId.get(d) + " for " + from + ", added to next");
             }
             else {
                 token = false;
                 TOKENMessage msg = new TOKENMessage();
-                sendTo(from, msg);
-                System.out.println(procId + " - Receive REQ from " + d + " for " + from + ", send token");
+                int dest = getKeyByValue(from);
+                if (dest > -1) {
+                    sendTo(dest, msg);
+                    System.out.println(procId + " - Receive REQ from " + doorProcId.get(d) + " for " + from + ", send token");
+                }
+                else {
+                    System.out.println(procId + " - Receive REQ from " + doorProcId.get(d) + " for " + from + ", but can't send token");
+                }
             }
         }
         else {
             REQMessage msg = new REQMessage(from);
-            sendTo(owner, msg);
-            System.out.println(procId + " - Receive REQ from " + d + " for " + from + ", send REQ to " + owner);
+            int dest = getKeyByValue(owner);
+            if (dest > -1) {
+                sendTo(dest, msg);
+                System.out.println(procId + " - Receive REQ from " + doorProcId.get(d) + " for " + from + ", send REQ to " + owner);
+            }
+            else {
+                System.out.println(procId + " - Receive REQ from " + doorProcId.get(d) + " for " + from + ", can't send REQ to " + owner);
+            }
         }
         displayState();
         owner = from;
@@ -146,7 +178,7 @@ public class NaimiTrehel extends Algorithm {
     // Rule 3 : Receive the TOKEN from d
     synchronized void receiveTOKEN(int d) {
         token = true;
-        System.out.println(procId + " - Receive TOKEN from " + d);
+        System.out.println(procId + " - Receive TOKEN from " + doorProcId.get(d));
         notify();
     }
 
@@ -158,10 +190,16 @@ public class NaimiTrehel extends Algorithm {
         sc = false;
         if (next != -1) {
             TOKENMessage msg = new TOKENMessage();
-            sendTo(next, msg);
-            System.out.println(procId + " - Send TOKEN to " + next);
-            token = false;
-            next = -1;
+            int dest = getKeyByValue(next);
+            if (dest > -1) {
+                sendTo(dest, msg);
+                System.out.println(procId + " - Send TOKEN to " + next);
+                token = false;
+                next = -1;
+            }
+            else {
+                System.out.println(procId + " - Can't send TOKEN to " + next);
+            }
         }
     }
 
@@ -186,5 +224,14 @@ public class NaimiTrehel extends Algorithm {
             state = state + "-- SLEEPING --";
 
         df.display(state);
+    }
+
+    private int getKeyByValue(int value) {
+        for (Entry<Integer, Integer> e : doorProcId.entrySet()) {
+            if(e.getValue() == value) {
+                return e.getKey();
+            }
+        }
+        return -1;
     }
 }

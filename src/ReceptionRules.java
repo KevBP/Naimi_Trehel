@@ -33,6 +33,10 @@ public class ReceptionRules extends Thread {
                     algo.receiveTOKEN(door);
                     break;
 
+                case INIT:
+                    algo.initDoor(door, ((REQMessage) m).getFrom());
+                    break;
+
                 default:
                     System.out.println("Error message type");
             }
